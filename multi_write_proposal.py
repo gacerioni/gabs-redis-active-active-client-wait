@@ -6,6 +6,8 @@ import json
 
 load_dotenv()
 
+ENABLE_LOCAL_WAIT = True  # Set to False to disable local HA replica wait
+
 # Redis credentials from .env
 redis_crdt_1_pwd = os.getenv("REDIS_CRDT_1_PASSWORD", "segredo123")
 redis_crdt_2_pwd = os.getenv("REDIS_CRDT_2_PASSWORD", "segredo123")
@@ -40,7 +42,9 @@ def fanout_write(clients: Dict[str, redis.Redis], *command_parts):
     for name, client in clients.items():
         try:
             client.execute_command(*command_parts)
-            print(f"[{name}] ✅ Command succeeded")
+            if ENABLE_LOCAL_WAIT:
+                client.wait(1, 2000)  # Wait for 1 local replica, max 2s
+            print(f"[{name}] ✅ Command succeeded{' (with WAIT)' if ENABLE_LOCAL_WAIT else ''}")
         except Exception as e:
             print(f"[{name}] ❌ Command failed: {e}")
             raise RuntimeError(f"Write failed on {name}")
